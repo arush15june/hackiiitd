@@ -1,14 +1,17 @@
+import pygame
 import time
 import threading
 import numpy as np
 import pyaudio
+
+from keys import KeyPlayer, KeyPlayerThread
 
 class NoteExtracter():
     NOTE_MIN = 60       # C4
     NOTE_MAX = 69       # A4
     FSAMP = 22050       # Sampling frequency in Hz
     FRAME_SIZE = 2048   # How many samples per frame?
-    FRAMES_PER_FFT = 32 # FFT takes average across how many frames?
+    FRAMES_PER_FFT = 16 # FFT takes average across how many frames?
 
     # Derived quantities from constants above. Note that as
     # SAMPLES_PER_FFT goes up, the frequency step size decreases (so
@@ -104,6 +107,34 @@ if __name__ == '__main__':
     notes = NoteExtracterThread()
     notes.start()
 
-    while 1:
-        print(notes.note, notes.key)
-        time.sleep(0.5)
+    HISTORY_NOTES = []
+
+    start = time.time()
+
+    IS_PLAYING = False
+    
+    while True:
+        HISTORY_NOTES.append({
+            'note': notes.note,
+            'key': notes.key
+        })
+
+        if time.time() - start > 0.3:
+            MAX_DATA = max(HISTORY_NOTES, key=lambda x: x['note'])
+            MAX_DATA = max(HISTORY_NOTES, key=lambda x: x['key'])
+            
+            if MAX_DATA['key'] == '':
+                continue
+
+            key_player = KeyPlayerThread()
+            # key_player = KeyPlayer()
+            key_player.setKey(MAX_DATA['key'])
+            
+            print('PLAYING AUDIO {}'.format(MAX_DATA['key']))
+            # key_player.playForTime(5)
+            key_player.start()
+            key_player.join()
+            print('PLAYED AUDIO')
+
+            HISTORY_NOTES = []
+            start = time.time()          
